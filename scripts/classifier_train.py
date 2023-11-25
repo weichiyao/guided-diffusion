@@ -72,6 +72,7 @@ def main():
 
     logger.log("creating data loader...")
     data = load_data(
+        dataset=args.dataset,
         data_dir=args.data_dir,
         batch_size=args.batch_size,
         image_size=args.image_size,
@@ -80,6 +81,7 @@ def main():
     )
     if args.val_data_dir:
         val_data = load_data(
+            dataset=args.dataset,
             data_dir=args.val_data_dir,
             batch_size=args.batch_size,
             image_size=args.image_size,
@@ -201,6 +203,7 @@ def split_microbatches(microbatch, *args):
 
 def create_argparser():
     defaults = dict(
+        dataset="ImageNet",
         data_dir="",
         val_data_dir="",
         noised=True,

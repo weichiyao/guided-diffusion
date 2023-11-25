@@ -60,6 +60,7 @@ def model_and_diffusion_defaults():
         resblock_updown=False,
         use_fp16=False,
         use_new_attention_order=False,
+        rgb=True
     )
     res.update(diffusion_defaults())
     return res
@@ -95,11 +96,14 @@ def create_model_and_diffusion(
     resblock_updown,
     use_fp16,
     use_new_attention_order,
-):
+    rgb=True
+):  
+    image_channels = 3 if rgb else 1 
     model = create_model(
         image_size,
         num_channels,
-        num_res_blocks,
+        num_res_blocks, 
+        image_channels,
         channel_mult=channel_mult,
         learn_sigma=learn_sigma,
         class_cond=class_cond,
@@ -131,6 +135,7 @@ def create_model(
     image_size,
     num_channels,
     num_res_blocks,
+    image_channels=3,
     channel_mult="",
     learn_sigma=False,
     class_cond=False,
@@ -154,6 +159,10 @@ def create_model(
             channel_mult = (1, 1, 2, 3, 4)
         elif image_size == 64:
             channel_mult = (1, 2, 3, 4)
+        elif image_size == 32:
+            channel_mult = (1, 2, 2, 2) 
+        elif image_size == 28:
+            channel_mult = (1, 2, 2, 2)
         else:
             raise ValueError(f"unsupported image size: {image_size}")
     else:
@@ -165,9 +174,9 @@ def create_model(
 
     return UNetModel(
         image_size=image_size,
-        in_channels=3,
+        in_channels=image_channels,
         model_channels=num_channels,
-        out_channels=(3 if not learn_sigma else 6),
+        out_channels=(image_channels if not learn_sigma else 2*image_channels),
         num_res_blocks=num_res_blocks,
         attention_resolutions=tuple(attention_ds),
         dropout=dropout,
@@ -186,6 +195,7 @@ def create_model(
 
 def create_classifier_and_diffusion(
     image_size,
+    image_channels,
     classifier_use_fp16,
     classifier_width,
     classifier_depth,
@@ -204,6 +214,7 @@ def create_classifier_and_diffusion(
 ):
     classifier = create_classifier(
         image_size,
+        image_channels,
         classifier_use_fp16,
         classifier_width,
         classifier_depth,
@@ -227,6 +238,7 @@ def create_classifier_and_diffusion(
 
 def create_classifier(
     image_size,
+    image_channels,
     classifier_use_fp16,
     classifier_width,
     classifier_depth,
@@ -243,6 +255,11 @@ def create_classifier(
         channel_mult = (1, 1, 2, 3, 4)
     elif image_size == 64:
         channel_mult = (1, 2, 3, 4)
+    elif image_size == 32:
+        channel_mult = (1, 2, 2, 2) 
+    elif image_size == 28:
+        channel_mult = (1, 2, 2, 2)
+
     else:
         raise ValueError(f"unsupported image size: {image_size}")
 
@@ -252,7 +269,7 @@ def create_classifier(
 
     return EncoderUNetModel(
         image_size=image_size,
-        in_channels=3,
+        in_channels=image_channels,
         model_channels=classifier_width,
         out_channels=1000,
         num_res_blocks=classifier_depth,

@@ -6,10 +6,14 @@ import blobfile as bf
 from mpi4py import MPI
 import numpy as np
 from torch.utils.data import DataLoader, Dataset
+from torchvision.datasets import MNIST, CIFAR10
+from torchvision import datasets, transforms
+from torch import Tensor
 
 
 def load_data(
     *,
+    dataset,
     data_dir,
     batch_size,
     image_size,
@@ -36,25 +40,41 @@ def load_data(
     :param random_crop: if True, randomly crop the images for augmentation.
     :param random_flip: if True, randomly flip the images for augmentation.
     """
+    if not dataset:
+        dataset = 'ImageNet'
     if not data_dir:
         raise ValueError("unspecified data directory")
-    all_files = _list_image_files_recursively(data_dir)
-    classes = None
-    if class_cond:
-        # Assume classes are the first part of the filename,
-        # before an underscore.
-        class_names = [bf.basename(path).split("_")[0] for path in all_files]
-        sorted_classes = {x: i for i, x in enumerate(sorted(set(class_names)))}
-        classes = [sorted_classes[x] for x in class_names]
-    dataset = ImageDataset(
-        image_size,
-        all_files,
-        classes=classes,
-        shard=MPI.COMM_WORLD.Get_rank(),
-        num_shards=MPI.COMM_WORLD.Get_size(),
-        random_crop=random_crop,
-        random_flip=random_flip,
-    )
+    if dataset == 'ImageNet':
+        all_files = _list_image_files_recursively(data_dir)
+        classes = None
+        if class_cond:
+            # Assume classes are the first part of the filename,
+            # before an underscore.
+            class_names = [bf.basename(path).split("_")[0] for path in all_files]
+            sorted_classes = {x: i for i, x in enumerate(sorted(set(class_names)))}
+            classes = [sorted_classes[x] for x in class_names]
+        dataset = ImageDataset(
+            image_size,
+            all_files,
+            classes=classes,
+            shard=MPI.COMM_WORLD.Get_rank(),
+            num_shards=MPI.COMM_WORLD.Get_size(),
+            random_crop=random_crop,
+            random_flip=random_flip,
+        )
+    elif dataset == "CIFAR10":
+        # https://github.com/kuangliu/pytorch-cifar/blob/master/main.py
+        transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+    
+        pytdataset = CIFAR10(data_dir, download=True, train=True, transform=transform)
+        dataset = PytorchDatset(pytdataset) 
+    else:
+        raise ValueError(f"Received dataset {dataset}. Only supported 'ImageNet' or 'CIFAR10'.")
     if deterministic:
         loader = DataLoader(
             dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True
@@ -77,6 +97,26 @@ def _list_image_files_recursively(data_dir):
         elif bf.isdir(full_path):
             results.extend(_list_image_files_recursively(full_path))
     return results
+
+class PytorchDatset(Dataset):
+    def __init__(self, dataset:Dataset):
+        super().__init__() 
+        self.dataset    = dataset
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        # Retrieve PIL image and label from the original dataset
+        pil_image, label = self.dataset[idx]
+        # Convert PIL Image to a NumPy array
+        np_image = np.array(pil_image)
+
+        out_dict = {}
+        if isinstance(label, Tensor):
+            label = label.item()
+        out_dict["y"] = np.array(label, dtype=np.int64)
+        return np_image, out_dict  # or (np_image, np_label) if converting label to NumPy array
 
 
 class ImageDataset(Dataset):

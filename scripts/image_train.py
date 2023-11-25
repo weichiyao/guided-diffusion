@@ -23,6 +23,7 @@ def main():
     logger.configure()
 
     logger.log("creating model and diffusion...")
+    # print(args_to_dict(args, model_and_diffusion_defaults().keys()))
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
@@ -31,12 +32,13 @@ def main():
 
     logger.log("creating data loader...")
     data = load_data(
+        dataset=args.dataset,
         data_dir=args.data_dir,
         batch_size=args.batch_size,
         image_size=args.image_size,
         class_cond=args.class_cond,
     )
-
+    
     logger.log("training...")
     TrainLoop(
         model=model,
@@ -59,6 +61,7 @@ def main():
 
 def create_argparser():
     defaults = dict(
+        dataset="ImageNet",
         data_dir="",
         schedule_sampler="uniform",
         lr=1e-4,
