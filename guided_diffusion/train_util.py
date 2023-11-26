@@ -38,6 +38,7 @@ class TrainLoop:
         schedule_sampler=None,
         weight_decay=0.0,
         lr_anneal_steps=0,
+        save_logdir=None,
     ):
         self.model = model
         self.diffusion = diffusion
@@ -58,6 +59,12 @@ class TrainLoop:
         self.schedule_sampler = schedule_sampler or UniformSampler(diffusion)
         self.weight_decay = weight_decay
         self.lr_anneal_steps = lr_anneal_steps
+         
+        
+        if save_logdir is None:
+            self.save_logdir = get_blob_logdir()
+        else:
+            self.save_logdir = save_logdir
 
         self.step = 0
         self.resume_step = 0
@@ -238,7 +245,7 @@ class TrainLoop:
                     filename = f"model{(self.step+self.resume_step):06d}.pt"
                 else:
                     filename = f"ema_{rate}_{(self.step+self.resume_step):06d}.pt"
-                with bf.BlobFile(bf.join(get_blob_logdir(), filename), "wb") as f:
+                with bf.BlobFile(bf.join(self.save_logdir, filename), "wb") as f:
                     th.save(state_dict, f)
 
         save_checkpoint(0, self.mp_trainer.master_params)
@@ -247,7 +254,7 @@ class TrainLoop:
 
         if dist.get_rank() == 0:
             with bf.BlobFile(
-                bf.join(get_blob_logdir(), f"opt{(self.step+self.resume_step):06d}.pt"),
+                bf.join(self.save_logdir, f"opt{(self.step+self.resume_step):06d}.pt"),
                 "wb",
             ) as f:
                 th.save(self.opt.state_dict(), f)
@@ -299,3 +306,4 @@ def log_loss_dict(diffusion, ts, losses):
         for sub_t, sub_loss in zip(ts.cpu().numpy(), values.detach().cpu().numpy()):
             quartile = int(4 * sub_t / diffusion.num_timesteps)
             logger.logkv_mean(f"{key}_q{quartile}", sub_loss)
+
