@@ -106,7 +106,7 @@ def load_data(
             shift_indices_saved_path=shift_indices_saved_path,
             seed=seed
         ) 
-        dataset = PytorchDatset(Subset(pytdataset, kept_indices)) 
+        dataset = PytorchDatset(Subset(pytdataset, kept_indices), class_cond) 
 
     elif dataset == "MNIST":
         transform_action = []
@@ -139,7 +139,7 @@ def load_data(
             shift_indices_saved_path=shift_indices_saved_path,
             seed=seed
         ) 
-        dataset = PytorchDatset(Subset(pytdataset, kept_indices)) 
+        dataset = PytorchDatset(Subset(pytdataset, kept_indices), class_cond) 
     else:
         raise ValueError(f"Received dataset {dataset}. Only supported 'ImageNet', 'CIFAR10' or 'MNIST'.")
     if deterministic:
@@ -166,9 +166,10 @@ def _list_image_files_recursively(data_dir):
     return results
 
 class PytorchDatset(Dataset):
-    def __init__(self, dataset:Dataset):
+    def __init__(self, dataset:Dataset, class_cond:bool=False):
         super().__init__() 
         self.dataset    = dataset
+        self.class_cond = class_cond
 
     def __len__(self):
         return len(self.dataset)
@@ -182,7 +183,8 @@ class PytorchDatset(Dataset):
         out_dict = {}
         if isinstance(label, Tensor):
             label = label.item()
-        out_dict["y"] = np.array(label, dtype=np.int64)
+        if self.class_cond:
+            out_dict["y"] = np.array(label, dtype=np.int64)
         return np_image, out_dict  # or (np_image, np_label) if converting label to NumPy array
 
 

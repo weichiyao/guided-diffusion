@@ -218,7 +218,7 @@ def create_argparser():
         val_data_dir="",
         n_sample=None,
         shift=False,
-        target_to_shift=[1,2,7],
+        targets_to_shift=[1,2,7],
         shrink_to_proportion=0.01,
         seed=101,
         noised=True,
