@@ -39,7 +39,7 @@ def main():
         class_cond=args.class_cond,
         n_sample=args.n_sample,
         shift=args.shift,
-        targets_to_shift=args.shrink_to_proportion,
+        targets_to_shift=args.targets_to_shift,
         shrink_to_proportion=args.shrink_to_proportion,
         seed=args.seed
     )
