@@ -1,11 +1,15 @@
 import math
 import random
+import os
+from collections import Counter
+from sklearn.model_selection import train_test_split
 
 from PIL import Image
 import blobfile as bf
 from mpi4py import MPI
 import numpy as np
-from torch.utils.data import DataLoader, Dataset
+import numpy.random as npr
+from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision.datasets import MNIST, CIFAR10
 from torchvision import datasets, transforms
 from torch import Tensor
@@ -20,7 +24,12 @@ def load_data(
     class_cond=False,
     deterministic=False,
     random_crop=False,
-    random_flip=True,
+    random_flip=True, 
+    n_sample=None,
+    shift=False,
+    targets_to_shift=[1,2,7],
+    shrink_to_proportion=0.01,
+    seed=101
 ):
     """
     For a dataset, create a generator over (images, kwargs) pairs.
@@ -62,19 +71,77 @@ def load_data(
             random_crop=random_crop,
             random_flip=random_flip,
         )
+
     elif dataset == "CIFAR10":
         # https://github.com/kuangliu/pytorch-cifar/blob/master/main.py
-        transform = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        ])
+        transform_action = []
+        if random_crop:
+            transform_action.append(transforms.RandomCrop(32, padding=4))
+        if random_flip:
+            transform_action.append(transforms.RandomHorizontalFlip())
+        transform_action.append(transforms.ToTensor())
+        transform_action.append(transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)))
+ 
     
-        pytdataset = CIFAR10(data_dir, download=True, train=True, transform=transform)
-        dataset = PytorchDatset(pytdataset) 
+        pytdataset = CIFAR10(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
+        
+        if n_sample is None:
+            n_sample = len(pytdataset)
+      
+        shift_indices_saved_filename = '{}_n{}_target{}_prop{}_seed{}.npy'.format(
+            dataset,
+            n_sample, 
+            ''.join(map(str, targets_to_shift)),
+            shrink_to_proportion,
+            seed
+        )
+        shift_indices_saved_path = os.path.join(data_dir, shift_indices_saved_filename)
+
+        kept_indices = get_data_indices(
+            pytdataset,
+            n_sample, 
+            shift,
+            targets_to_shift,
+            shrink_to_proportion,
+            shift_indices_saved_path=shift_indices_saved_path,
+            seed=seed
+        ) 
+        dataset = PytorchDatset(Subset(pytdataset, kept_indices)) 
+
+    elif dataset == "MNIST":
+        transform_action = []
+        if random_crop:
+            transform_action.append(transforms.RandomCrop(28, padding=4))
+        if random_flip:
+            transform_action.append(transforms.RandomHorizontalFlip())
+        transform_action.append(transforms.ToTensor())
+        transform_action.append(transforms.Normalize((0.1307,), (0.3081,)))
+ 
+        pytdataset = MNIST(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
+        if n_sample is None:
+            n_sample = len(pytdataset)
+      
+        shift_indices_saved_filename = '{}_n{}_target{}_prop{}_seed{}.npy'.format(
+            dataset,
+            n_sample, 
+            ''.join(map(str, targets_to_shift)),
+            shrink_to_proportion,
+            seed
+        )
+        shift_indices_saved_path = os.path.join(data_dir, shift_indices_saved_filename)
+
+        kept_indices = get_data_indices(
+            pytdataset,
+            n_sample, 
+            shift,
+            targets_to_shift,
+            shrink_to_proportion,
+            shift_indices_saved_path=shift_indices_saved_path,
+            seed=seed
+        ) 
+        dataset = PytorchDatset(Subset(pytdataset, kept_indices)) 
     else:
-        raise ValueError(f"Received dataset {dataset}. Only supported 'ImageNet' or 'CIFAR10'.")
+        raise ValueError(f"Received dataset {dataset}. Only supported 'ImageNet', 'CIFAR10' or 'MNIST'.")
     if deterministic:
         loader = DataLoader(
             dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True
@@ -205,3 +272,76 @@ def random_crop_arr(pil_image, image_size, min_crop_frac=0.8, max_crop_frac=1.0)
     crop_y = random.randrange(arr.shape[0] - image_size + 1)
     crop_x = random.randrange(arr.shape[1] - image_size + 1)
     return arr[crop_y : crop_y + image_size, crop_x : crop_x + image_size]
+
+
+def get_data_indices( 
+    dataset              : datasets,  
+    n_sample             : int=None,
+    shift                : bool=False, 
+    targets_to_shift     : list=[1,2,7],
+    shrink_to_proportion : float = 0.2,
+    shift_indices_saved_path = None,
+    seed                 : int = 101) -> np.ndarray:
+    
+    if n_sample is None:
+        n_sample = len(dataset)
+
+    
+    if shift:
+        if not os.path.isfile(shift_indices_saved_path): 
+            print(f"Could not find {shift_indices_saved_path} for covariates shift.")
+            print(f"Creating {shift_indices_saved_path} ...")
+
+
+            generator = npr.default_rng(seed)
+            ## only keep shrink_to_proportion of data points if their labels are in targets_to_shift 
+            ind_indices = np.full(len(dataset), True)
+            
+            for target_curr in targets_to_shift:
+                indices_curr = [i for i, (_, target) in enumerate(dataset) if target == target_curr]
+                # number of indices in the current class
+                n_curr = len(indices_curr)
+                # number of indices to be leftout
+                n_to_leftout = int(n_curr*(1-shrink_to_proportion))
+                # choice the indices to be leftout
+                sub_lefout = generator.choice(n_curr, n_to_leftout, replace=False)
+                # note down the indices to be leftout
+                ind_indices[np.array(indices_curr)[sub_lefout]] = False
+
+            subindices_to_keep = generator.choice(sum(ind_indices), 
+                                                  min(n_sample, sum(ind_indices)), 
+                                                  replace=False)
+            kept_indices = np.where(ind_indices)[0][subindices_to_keep]
+            
+             
+            if isinstance(dataset.targets[0], Tensor):
+                label_counts = Counter([dataset.targets[i].item() for i in kept_indices]) 
+            else:
+                label_counts = Counter([dataset.targets[i] for i in kept_indices]) 
+            
+            save_dict = {
+                'label_counts': label_counts,
+                'indices'     : kept_indices, 
+            }
+            np.save(shift_indices_saved_path, save_dict)
+            print(f"Saved the indices for covariates shift in '{shift_indices_saved_path}'.")
+        else:
+            print(f"Found {shift_indices_saved_path} for covariates shift.")
+            print(f"Retrieving results from {shift_indices_saved_path} ...")
+            loaded_dict = np.load(shift_indices_saved_path, allow_pickle=True).item()
+            kept_indices      = loaded_dict['indices']
+            label_counts = loaded_dict['label_counts'] 
+    else:
+        kept_indices = np.arange(len(dataset))
+        if n_sample < len(dataset): 
+            kept_indices, _ = train_test_split(kept_indices, 
+                                               train_size=n_sample,  
+                                               random_state=seed)
+         
+        if isinstance(dataset.targets[0], Tensor):
+            label_counts = Counter([dataset.targets[i].item() for i in kept_indices]) 
+        else:
+            label_counts = Counter([dataset.targets[i] for i in kept_indices]) 
+        
+    print("label_counts:", dict(label_counts)) 
+    return kept_indices 

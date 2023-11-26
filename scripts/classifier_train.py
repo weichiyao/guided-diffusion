@@ -78,6 +78,11 @@ def main():
         image_size=args.image_size,
         class_cond=True,
         random_crop=True,
+        n_sample=args.n_sample,
+        shift=args.shift,
+        targets_to_shift=args.shrink_to_proportion,
+        shrink_to_proportion=args.shrink_to_proportion,
+        seed=args.seed
     )
     if args.val_data_dir:
         val_data = load_data(
@@ -86,6 +91,11 @@ def main():
             batch_size=args.batch_size,
             image_size=args.image_size,
             class_cond=True,
+            n_sample=args.n_sample,
+            shift=args.shift,
+            targets_to_shift=args.shrink_to_proportion,
+            shrink_to_proportion=args.shrink_to_proportion,
+            seed=args.seed
         )
     else:
         val_data = None
@@ -206,6 +216,11 @@ def create_argparser():
         dataset="ImageNet",
         data_dir="",
         val_data_dir="",
+        n_sample=None,
+        shift=False,
+        target_to_shift=[1,2,7],
+        shrink_to_proportion=0.01,
+        seed=101,
         noised=True,
         iterations=150000,
         lr=3e-4,

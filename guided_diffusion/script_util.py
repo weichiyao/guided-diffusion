@@ -60,7 +60,7 @@ def model_and_diffusion_defaults():
         resblock_updown=False,
         use_fp16=False,
         use_new_attention_order=False,
-        rgb=True
+        # rgb=True
     )
     res.update(diffusion_defaults())
     return res
@@ -96,9 +96,9 @@ def create_model_and_diffusion(
     resblock_updown,
     use_fp16,
     use_new_attention_order,
-    rgb=True
+    # rgb=True
 ):  
-    image_channels = 3 if rgb else 1 
+    image_channels = 3 # if rgb else 1 
     model = create_model(
         image_size,
         num_channels,
