@@ -1,5 +1,5 @@
 """
-Train a noised image classifier on ImageNet.
+Train a basic image classifier on CIFAR10.
 """
 
 import argparse
