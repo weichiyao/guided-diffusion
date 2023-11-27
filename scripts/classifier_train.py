@@ -29,7 +29,7 @@ def main():
     args = create_argparser().parse_args()
 
     dist_util.setup_dist()
-    logger.configure()
+    logger.configure(args.save_logdir)
 
     logger.log("creating model and diffusion...")
     model, diffusion = create_classifier_and_diffusion(
@@ -146,7 +146,9 @@ def main():
                 if i == 0:
                     mp_trainer.zero_grad()
                 mp_trainer.backward(loss * len(sub_batch) / len(batch))
-
+    
+    save_logdir = logger.get_dir() if args.save_logdir is None else args.save_logdir
+    print(f"save_logdir is {save_logdir}")
     for step in range(args.iterations - resume_step):
         logger.logkv("step", step + resume_step)
         logger.logkv(
@@ -171,12 +173,14 @@ def main():
             and not (step + resume_step) % args.save_interval
         ):
             logger.log("saving model...")
-            save_model(mp_trainer, opt, step + resume_step)
+            save_model(mp_trainer, opt, step + resume_step, save_logdir)
 
     if dist.get_rank() == 0:
         logger.log("saving model...")
-        save_model(mp_trainer, opt, step + resume_step)
+        save_model(mp_trainer, opt, step + resume_step, save_logdir)
     dist.barrier()
+
+
 
 
 def set_annealed_lr(opt, base_lr, frac_done):
@@ -185,15 +189,15 @@ def set_annealed_lr(opt, base_lr, frac_done):
         param_group["lr"] = lr
 
 
-def save_model(mp_trainer, opt, step):
+def save_model(mp_trainer, opt, step, output_dir):
     if dist.get_rank() == 0:
         th.save(
             mp_trainer.master_params_to_state_dict(mp_trainer.master_params),
-            os.path.join(logger.get_dir(), f"model{step:06d}.pt"),
+            os.path.join(output_dir, f"model{step:06d}.pt"),
         )
-        th.save(opt.state_dict(), os.path.join(logger.get_dir(), f"opt{step:06d}.pt"))
-
-
+        th.save(opt.state_dict(), os.path.join(output_dir, f"opt{step:06d}.pt"))
+        print("saving...", os.path.join(output_dir, f"opt{step:06d}.pt"))
+ 
 def compute_top_k(logits, labels, k, reduction="mean"):
     _, top_ks = th.topk(logits, k, dim=-1)
     if reduction == "mean":
@@ -233,6 +237,7 @@ def create_argparser():
         log_interval=10,
         eval_interval=5,
         save_interval=10000,
+        save_logdir=None
     )
     defaults.update(classifier_and_diffusion_defaults())
     parser = argparse.ArgumentParser()

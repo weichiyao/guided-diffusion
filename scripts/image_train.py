@@ -20,7 +20,7 @@ def main():
     args = create_argparser().parse_args()
 
     dist_util.setup_dist()
-    logger.configure()
+    logger.configure(args.save_logdir)
 
     logger.log("creating model and diffusion...")
     # print(args_to_dict(args, model_and_diffusion_defaults().keys()))

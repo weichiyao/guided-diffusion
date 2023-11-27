@@ -96,14 +96,11 @@ def create_model_and_diffusion(
     resblock_updown,
     use_fp16,
     use_new_attention_order,
-    # rgb=True
 ):  
-    image_channels = 3 # if rgb else 1 
     model = create_model(
         image_size,
         num_channels,
         num_res_blocks, 
-        image_channels,
         channel_mult=channel_mult,
         learn_sigma=learn_sigma,
         class_cond=class_cond,
@@ -135,7 +132,6 @@ def create_model(
     image_size,
     num_channels,
     num_res_blocks,
-    image_channels=3,
     channel_mult="",
     learn_sigma=False,
     class_cond=False,
@@ -171,7 +167,8 @@ def create_model(
     attention_ds = []
     for res in attention_resolutions.split(","):
         attention_ds.append(image_size // int(res))
-
+    
+    image_channels = 3
     return UNetModel(
         image_size=image_size,
         in_channels=image_channels,
@@ -195,7 +192,6 @@ def create_model(
 
 def create_classifier_and_diffusion(
     image_size,
-    image_channels,
     classifier_use_fp16,
     classifier_width,
     classifier_depth,
@@ -214,7 +210,6 @@ def create_classifier_and_diffusion(
 ):
     classifier = create_classifier(
         image_size,
-        image_channels,
         classifier_use_fp16,
         classifier_width,
         classifier_depth,
@@ -238,7 +233,6 @@ def create_classifier_and_diffusion(
 
 def create_classifier(
     image_size,
-    image_channels,
     classifier_use_fp16,
     classifier_width,
     classifier_depth,
@@ -269,7 +263,7 @@ def create_classifier(
 
     return EncoderUNetModel(
         image_size=image_size,
-        in_channels=image_channels,
+        in_channels=3,
         model_channels=classifier_width,
         out_channels=1000,
         num_res_blocks=classifier_depth,
