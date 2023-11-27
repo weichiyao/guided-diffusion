@@ -116,7 +116,7 @@ def main():
         
         t = th.zeros(batch.shape[0], dtype=th.long, device=dist_util.dev())
 
-        for i, (sub_batch, sub_labels, sub_t) in enumerate(
+        for i, (sub_batch, sub_labels) in enumerate(
             split_microbatches(args.microbatch, batch, labels)
         ):
             logits = model(sub_batch)

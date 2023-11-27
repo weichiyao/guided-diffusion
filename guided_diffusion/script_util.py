@@ -45,6 +45,7 @@ def classifier_basic_defaults():
     Defaults for basic classifier models (resnet).
     """
     return dict(
+        image_size=32,
         classifier_use_fp16=False, 
         num_classes=10, 
         arch='resnet50'
@@ -241,6 +242,7 @@ def create_classifier_and_diffusion(
     return classifier, diffusion
 
 def create_classifier_basic( 
+    image_size,
     classifier_use_fp16, 
     num_classes, 
     arch='resnet50'
