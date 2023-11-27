@@ -4,6 +4,7 @@ import inspect
 from . import gaussian_diffusion as gd
 from .respace import SpacedDiffusion, space_timesteps
 from .unet import SuperResModel, UNetModel, EncoderUNetModel
+from .resnet import get_model
 
 NUM_CLASSES = 1000
 
@@ -39,6 +40,15 @@ def classifier_defaults():
         classifier_pool="attention",
     )
 
+def classifier_basic_defaults():
+    """
+    Defaults for basic classifier models (resnet).
+    """
+    return dict(
+        classifier_use_fp16=False, 
+        num_classes=10, 
+        arch='resnet50'
+    )
 
 def model_and_diffusion_defaults():
     """
@@ -229,6 +239,13 @@ def create_classifier_and_diffusion(
         timestep_respacing=timestep_respacing,
     )
     return classifier, diffusion
+
+def create_classifier_basic( 
+    classifier_use_fp16, 
+    num_classes, 
+    arch='resnet50'
+): 
+    return get_model(arch, num_classes, classifier_use_fp16)
 
 
 def create_classifier(
