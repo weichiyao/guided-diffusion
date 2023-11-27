@@ -25,7 +25,7 @@ def load_data(
     deterministic=False,
     random_crop=False,
     random_flip=True, 
-    n_sample=None,
+    ndata=None,
     shift=False,
     targets_to_shift=[1,2,7],
     shrink_to_proportion=0.01,
@@ -85,12 +85,12 @@ def load_data(
     
         pytdataset = CIFAR10(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
         
-        if n_sample is None:
-            n_sample = len(pytdataset)
+        if ndata is None:
+            ndata = len(pytdataset)
       
         shift_indices_saved_filename = '{}_n{}_target{}_prop{}_seed{}.npy'.format(
             dataset,
-            n_sample, 
+            ndata, 
             ''.join(map(str, targets_to_shift)),
             shrink_to_proportion,
             seed
@@ -99,7 +99,7 @@ def load_data(
 
         kept_indices = get_data_indices(
             pytdataset,
-            n_sample, 
+            ndata, 
             shift,
             targets_to_shift,
             shrink_to_proportion,
@@ -118,12 +118,12 @@ def load_data(
         transform_action.append(transforms.Normalize((0.1307,), (0.3081,)))
  
         pytdataset = MNIST(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
-        if n_sample is None:
-            n_sample = len(pytdataset)
+        if ndata is None:
+            ndata = len(pytdataset)
       
         shift_indices_saved_filename = '{}_n{}_target{}_prop{}_seed{}.npy'.format(
             dataset,
-            n_sample, 
+            ndata, 
             ''.join(map(str, targets_to_shift)),
             shrink_to_proportion,
             seed
@@ -132,7 +132,7 @@ def load_data(
 
         kept_indices = get_data_indices(
             pytdataset,
-            n_sample, 
+            ndata, 
             shift,
             targets_to_shift,
             shrink_to_proportion,
@@ -278,15 +278,15 @@ def random_crop_arr(pil_image, image_size, min_crop_frac=0.8, max_crop_frac=1.0)
 
 def get_data_indices( 
     dataset              : datasets,  
-    n_sample             : int=None,
+    ndata                : int=None,
     shift                : bool=False, 
     targets_to_shift     : list=[1,2,7],
     shrink_to_proportion : float = 0.2,
     shift_indices_saved_path = None,
     seed                 : int = 101) -> np.ndarray:
     
-    if n_sample is None:
-        n_sample = len(dataset)
+    if ndata is None:
+        ndata = len(dataset)
 
     
     if shift:
@@ -311,7 +311,7 @@ def get_data_indices(
                 ind_indices[np.array(indices_curr)[sub_lefout]] = False
 
             subindices_to_keep = generator.choice(sum(ind_indices), 
-                                                  min(n_sample, sum(ind_indices)), 
+                                                  min(ndata, sum(ind_indices)), 
                                                   replace=False)
             kept_indices = np.where(ind_indices)[0][subindices_to_keep]
             
@@ -331,13 +331,13 @@ def get_data_indices(
             print(f"Found {shift_indices_saved_path} for covariates shift.")
             print(f"Retrieving results from {shift_indices_saved_path} ...")
             loaded_dict = np.load(shift_indices_saved_path, allow_pickle=True).item()
-            kept_indices      = loaded_dict['indices']
+            kept_indices = loaded_dict['indices']
             label_counts = loaded_dict['label_counts'] 
     else:
         kept_indices = np.arange(len(dataset))
-        if n_sample < len(dataset): 
+        if ndata < len(dataset): 
             kept_indices, _ = train_test_split(kept_indices, 
-                                               train_size=n_sample,  
+                                               train_size=ndata,  
                                                random_state=seed)
          
         if isinstance(dataset.targets[0], Tensor):

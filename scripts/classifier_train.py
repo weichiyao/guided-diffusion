@@ -148,7 +148,7 @@ def main():
                 mp_trainer.backward(loss * len(sub_batch) / len(batch))
     
     save_logdir = logger.get_dir() if args.save_logdir is None else args.save_logdir
-    print(f"save_logdir is {save_logdir}")
+    
     for step in range(args.iterations - resume_step):
         logger.logkv("step", step + resume_step)
         logger.logkv(

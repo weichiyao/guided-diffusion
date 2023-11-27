@@ -27,7 +27,7 @@ def main():
     args = create_argparser().parse_args()
 
     dist_util.setup_dist()
-    logger.configure()
+    logger.configure(args.save_logdir)
 
     logger.log("creating model and diffusion...")
     model, diffusion = create_model_and_diffusion(
@@ -95,6 +95,8 @@ def main():
         dist.all_gather(gathered_labels, classes)
         all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
         logger.log(f"created {len(all_images) * args.batch_size} samples")
+    
+    save_logdir = logger.get_dir() if args.save_logdir is None else args.save_logdir
 
     arr = np.concatenate(all_images, axis=0)
     arr = arr[: args.num_samples]
@@ -102,7 +104,7 @@ def main():
     label_arr = label_arr[: args.num_samples]
     if dist.get_rank() == 0:
         shape_str = "x".join([str(x) for x in arr.shape])
-        out_path = os.path.join(logger.get_dir(), f"samples_{shape_str}.npz")
+        out_path = os.path.join(save_logdir, f"samples_{shape_str}.npz")
         logger.log(f"saving to {out_path}")
         np.savez(out_path, arr, label_arr)
 
@@ -119,6 +121,7 @@ def create_argparser():
         model_path="",
         classifier_path="",
         classifier_scale=1.0,
+        save_logdir=None
     )
     defaults.update(model_and_diffusion_defaults())
     defaults.update(classifier_defaults())

@@ -37,7 +37,7 @@ def main():
         batch_size=args.batch_size,
         image_size=args.image_size,
         class_cond=args.class_cond,
-        n_sample=args.n_sample,
+        ndata=args.ndata,
         shift=args.shift,
         targets_to_shift=args.targets_to_shift,
         shrink_to_proportion=args.shrink_to_proportion,
@@ -69,7 +69,7 @@ def create_argparser():
     defaults = dict(
         dataset="ImageNet",
         data_dir="",
-        n_sample=None,
+        ndata=None,
         shift=False,
         targets_to_shift=[1,2,7],
         shrink_to_proportion=0.01,
