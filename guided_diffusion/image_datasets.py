@@ -88,14 +88,15 @@ def load_data(
         if ndata is None:
             ndata = len(pytdataset)
       
-        shift_indices_saved_filename = '{}_n{}_target{}_prop{}_seed{}.npy'.format(
+        indices_saved_filename = '{}_n{}_shift{}_target{}_prop{}_seed{}.npy'.format(
             dataset,
             ndata, 
+            str(shift)[0],
             ''.join(map(str, targets_to_shift)),
             shrink_to_proportion,
             seed
         )
-        shift_indices_saved_path = os.path.join(data_dir, shift_indices_saved_filename)
+        indices_saved_path = os.path.join(data_dir, indices_saved_filename)
 
         kept_indices = get_data_indices(
             pytdataset,
@@ -103,7 +104,7 @@ def load_data(
             shift,
             targets_to_shift,
             shrink_to_proportion,
-            shift_indices_saved_path=shift_indices_saved_path,
+            indices_saved_path=indices_saved_path,
             seed=seed
         ) 
         dataset = PytorchDatset(Subset(pytdataset, kept_indices), class_cond) 
@@ -120,15 +121,17 @@ def load_data(
         pytdataset = MNIST(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
         if ndata is None:
             ndata = len(pytdataset)
-      
-        shift_indices_saved_filename = '{}_n{}_target{}_prop{}_seed{}.npy'.format(
+       
+         
+        indices_saved_filename = '{}_n{}_shift{}_target{}_prop{}_seed{}.npy'.format(
             dataset,
             ndata, 
+            str(shift)[0],
             ''.join(map(str, targets_to_shift)),
             shrink_to_proportion,
             seed
         )
-        shift_indices_saved_path = os.path.join(data_dir, shift_indices_saved_filename)
+        indices_saved_path = os.path.join(data_dir, indices_saved_filename)
 
         kept_indices = get_data_indices(
             pytdataset,
@@ -136,7 +139,7 @@ def load_data(
             shift,
             targets_to_shift,
             shrink_to_proportion,
-            shift_indices_saved_path=shift_indices_saved_path,
+            indices_saved_path=indices_saved_path,
             seed=seed
         ) 
         dataset = PytorchDatset(Subset(pytdataset, kept_indices), class_cond) 
@@ -282,7 +285,7 @@ def get_data_indices(
     shift                : bool=False, 
     targets_to_shift     : list=[1,2,7],
     shrink_to_proportion : float = 0.2,
-    shift_indices_saved_path = None,
+    indices_saved_path   : str = None,
     seed                 : int = 101) -> np.ndarray:
     
     if ndata is None:
@@ -290,10 +293,9 @@ def get_data_indices(
 
     
     if shift:
-        if not os.path.isfile(shift_indices_saved_path): 
-            print(f"Could not find {shift_indices_saved_path} for covariates shift.")
-            print(f"Creating {shift_indices_saved_path} ...")
-
+        if not os.path.isfile(indices_saved_path): 
+            print(f"Could not find {indices_saved_path} for covariates shift.")
+            print(f"Creating {indices_saved_path} ...")
 
             generator = npr.default_rng(seed)
             ## only keep shrink_to_proportion of data points if their labels are in targets_to_shift 
@@ -325,25 +327,47 @@ def get_data_indices(
                 'label_counts': label_counts,
                 'indices'     : kept_indices, 
             }
-            np.save(shift_indices_saved_path, save_dict)
-            print(f"Saved the indices for covariates shift in '{shift_indices_saved_path}'.")
+            np.save(indices_saved_path, save_dict)
+            print(f"Saved the indices for covariates shift in '{indices_saved_path}'.")
         else:
-            print(f"Found {shift_indices_saved_path} for covariates shift.")
-            print(f"Retrieving results from {shift_indices_saved_path} ...")
-            loaded_dict = np.load(shift_indices_saved_path, allow_pickle=True).item()
+            print(f"Found {indices_saved_path} for covariates shift.")
+            print(f"Retrieving results from {indices_saved_path} ...")
+            loaded_dict = np.load(indices_saved_path, allow_pickle=True).item()
             kept_indices = loaded_dict['indices']
             label_counts = loaded_dict['label_counts'] 
     else:
         kept_indices = np.arange(len(dataset))
         if ndata < len(dataset): 
-            kept_indices, _ = train_test_split(kept_indices, 
-                                               train_size=ndata,  
-                                               random_state=seed)
-         
-        if isinstance(dataset.targets[0], Tensor):
-            label_counts = Counter([dataset.targets[i].item() for i in kept_indices]) 
+            if not os.path.isfile(indices_saved_path): 
+                print(f"Could not find {indices_saved_path} for dataset of size {ndata} (out of {len(dataset)}).")
+                print(f"Creating {indices_saved_path} ...")
+                kept_indices, _ = train_test_split(kept_indices, 
+                                                   train_size=ndata,  
+                                                   random_state=seed)
+            
+                if isinstance(dataset.targets[0], Tensor):
+                    label_counts = Counter([dataset.targets[i].item() for i in kept_indices]) 
+                else:
+                    label_counts = Counter([dataset.targets[i] for i in kept_indices]) 
+
+                save_dict = {
+                    'label_counts': label_counts,
+                    'indices'     : kept_indices, 
+                }
+                np.save(indices_saved_path, save_dict)
+                print(f"Saved the indices for dataset of size {ndata} (out of {len(dataset)}) in '{indices_saved_path}'.")
+            else:
+                print(f"Found {indices_saved_path} for dataset of size {ndata} (out of {len(dataset)}).")
+                print(f"Retrieving results from {indices_saved_path} ...")
+                loaded_dict = np.load(indices_saved_path, allow_pickle=True).item()
+                kept_indices = loaded_dict['indices']
+                label_counts = loaded_dict['label_counts'] 
+
         else:
-            label_counts = Counter([dataset.targets[i] for i in kept_indices]) 
-        
+            if isinstance(dataset.targets[0], Tensor):
+                label_counts = Counter([dataset.targets[i].item() for i in kept_indices]) 
+            else:
+                label_counts = Counter([dataset.targets[i] for i in kept_indices]) 
+
     print("label_counts:", dict(label_counts)) 
     return kept_indices 
