@@ -36,6 +36,7 @@ def classifier_defaults():
         classifier_resblock_updown=True,  # False
         classifier_pool="attention",
         num_classes=10,
+        rgb=True
     )
 
 def classifier_basic_defaults():
@@ -70,7 +71,7 @@ def model_and_diffusion_defaults():
         resblock_updown=False,
         use_fp16=False,
         use_new_attention_order=False,
-        # rgb=True
+        rgb=True
     )
     res.update(diffusion_defaults())
     return res
@@ -107,11 +108,14 @@ def create_model_and_diffusion(
     resblock_updown,
     use_fp16,
     use_new_attention_order,
+    rgb=True,
 ):  
+    image_channels = 3 if rgb else 1 
     model = create_model(
         image_size,
         num_channels,
         num_res_blocks, 
+        image_channels=image_channels, 
         channel_mult=channel_mult,
         learn_sigma=learn_sigma,
         num_classes=num_classes,
@@ -144,6 +148,7 @@ def create_model(
     image_size,
     num_channels,
     num_res_blocks,
+    image_channels=3, 
     channel_mult="",
     learn_sigma=False,
     num_classes=1000,
@@ -181,7 +186,6 @@ def create_model(
     for res in attention_resolutions.split(","):
         attention_ds.append(image_size // int(res))
     
-    image_channels = 3
     return UNetModel(
         image_size=image_size,
         in_channels=image_channels,
@@ -221,7 +225,9 @@ def create_classifier_and_diffusion(
     predict_xstart,
     rescale_timesteps,
     rescale_learned_sigmas,
+    rgb=True
 ):
+    image_channels = 3 if rgb else 1
     classifier = create_classifier(
         image_size,
         classifier_use_fp16,
@@ -232,6 +238,7 @@ def create_classifier_and_diffusion(
         classifier_resblock_updown,
         classifier_pool,
         num_classes,
+        image_channels
     )
     diffusion = create_gaussian_diffusion(
         steps=diffusion_steps,
@@ -264,6 +271,7 @@ def create_classifier(
     classifier_resblock_updown,
     classifier_pool,
     num_classes,
+    image_channels
 ):
     if image_size == 512:
         channel_mult = (0.5, 1, 1, 2, 2, 4, 4)
@@ -287,7 +295,7 @@ def create_classifier(
 
     return EncoderUNetModel(
         image_size=image_size,
-        in_channels=3,
+        in_channels=image_channels,
         model_channels=classifier_width,
         out_channels=num_classes,
         num_res_blocks=classifier_depth,

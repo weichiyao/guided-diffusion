@@ -229,7 +229,8 @@ def create_argparser():
         log_interval=10,
         eval_interval=5,
         save_interval=10000,
-        save_logdir=None
+        save_logdir=None,
+        arch='resnet50_mnist'
     )
     defaults.update(classifier_basic_defaults())
     parser = argparse.ArgumentParser()

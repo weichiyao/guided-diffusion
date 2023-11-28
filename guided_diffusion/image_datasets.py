@@ -71,20 +71,33 @@ def load_data(
             random_crop=random_crop,
             random_flip=random_flip,
         )
+    else:
 
-    elif dataset == "CIFAR10":
-        # https://github.com/kuangliu/pytorch-cifar/blob/master/main.py
-        transform_action = []
-        if random_crop:
-            transform_action.append(transforms.RandomCrop(32, padding=4))
-        if random_flip:
-            transform_action.append(transforms.RandomHorizontalFlip())
-        transform_action.append(transforms.ToTensor())
-        transform_action.append(transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)))
- 
+        if dataset == "CIFAR10":
+            # https://github.com/kuangliu/pytorch-cifar/blob/master/main.py
+            transform_action = []
+            if random_crop:
+                transform_action.append(transforms.RandomCrop(32, padding=4))
+            if random_flip:
+                transform_action.append(transforms.RandomHorizontalFlip())
+            transform_action.append(transforms.ToTensor())
+            transform_action.append(transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)))
     
-        pytdataset = CIFAR10(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
         
+            pytdataset = CIFAR10(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
+        elif dataset == "MNIST":
+            transform_action = []
+            if random_crop:
+                transform_action.append(transforms.RandomCrop(28, padding=4))
+            if random_flip:
+                transform_action.append(transforms.RandomHorizontalFlip())
+            transform_action.append(transforms.ToTensor())
+            transform_action.append(transforms.Normalize((0.1307,), (0.3081,)))
+    
+            pytdataset = MNIST(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
+        else:
+            raise ValueError(f"Received dataset {dataset}. Only supported 'ImageNet', 'CIFAR10' or 'MNIST'.")
+
         if ndata is None:
             ndata = len(pytdataset)
       
@@ -108,43 +121,7 @@ def load_data(
             seed=seed
         ) 
         dataset = PytorchDatset(Subset(pytdataset, kept_indices), class_cond) 
-
-    elif dataset == "MNIST":
-        transform_action = []
-        if random_crop:
-            transform_action.append(transforms.RandomCrop(28, padding=4))
-        if random_flip:
-            transform_action.append(transforms.RandomHorizontalFlip())
-        transform_action.append(transforms.ToTensor())
-        transform_action.append(transforms.Normalize((0.1307,), (0.3081,)))
- 
-        pytdataset = MNIST(data_dir, download=True, train=True, transform=transforms.Compose(transform_action))
-        if ndata is None:
-            ndata = len(pytdataset)
-       
-         
-        indices_saved_filename = '{}_n{}_shift{}_target{}_prop{}_seed{}.npy'.format(
-            dataset,
-            ndata, 
-            str(shift)[0],
-            ''.join(map(str, targets_to_shift)),
-            shrink_to_proportion,
-            seed
-        )
-        indices_saved_path = os.path.join(data_dir, indices_saved_filename)
-
-        kept_indices = get_data_indices(
-            pytdataset,
-            ndata, 
-            shift,
-            targets_to_shift,
-            shrink_to_proportion,
-            indices_saved_path=indices_saved_path,
-            seed=seed
-        ) 
-        dataset = PytorchDatset(Subset(pytdataset, kept_indices), class_cond) 
-    else:
-        raise ValueError(f"Received dataset {dataset}. Only supported 'ImageNet', 'CIFAR10' or 'MNIST'.")
+        
     if deterministic:
         loader = DataLoader(
             dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True
