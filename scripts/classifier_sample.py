@@ -13,7 +13,6 @@ import torch.nn.functional as F
 
 from guided_diffusion import dist_util, logger
 from guided_diffusion.script_util import (
-    NUM_CLASSES,
     model_and_diffusion_defaults,
     classifier_defaults,
     create_model_and_diffusion,
@@ -21,7 +20,6 @@ from guided_diffusion.script_util import (
     add_dict_to_argparser,
     args_to_dict,
 )
-
 
 def main():
     args = create_argparser().parse_args()
@@ -70,7 +68,7 @@ def main():
     while len(all_images) * args.batch_size < args.num_samples:
         model_kwargs = {}
         classes = th.randint(
-            low=0, high=NUM_CLASSES, size=(args.batch_size,), device=dist_util.dev()
+            low=0, high=args.num_classes, size=(args.batch_size,), device=dist_util.dev()
         )
         model_kwargs["y"] = classes
         sample_fn = (
@@ -115,6 +113,7 @@ def main():
 def create_argparser():
     defaults = dict(
         clip_denoised=True,
+        num_classes=10,
         num_samples=10000,
         batch_size=16,
         use_ddim=False,

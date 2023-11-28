@@ -220,6 +220,7 @@ def create_argparser():
         dataset="ImageNet",
         data_dir="",
         val_data_dir="",
+        num_classes=1000,
         ndata=None,
         shift=False,
         targets_to_shift=[1,2,7],

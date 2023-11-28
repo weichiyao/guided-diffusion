@@ -12,7 +12,6 @@ import torch.distributed as dist
 
 from guided_diffusion import dist_util, logger
 from guided_diffusion.script_util import (
-    NUM_CLASSES,
     model_and_diffusion_defaults,
     create_model_and_diffusion,
     add_dict_to_argparser,
@@ -45,7 +44,7 @@ def main():
         model_kwargs = {}
         if args.class_cond:
             classes = th.randint(
-                low=0, high=NUM_CLASSES, size=(args.batch_size,), device=dist_util.dev()
+                low=0, high=args.num_classes, size=(args.batch_size,), device=dist_util.dev()
             )
             model_kwargs["y"] = classes
         sample_fn = (
@@ -94,6 +93,7 @@ def create_argparser():
     defaults = dict(
         clip_denoised=True,
         num_samples=10000,
+        num_classes=10,
         batch_size=16,
         use_ddim=False,
         model_path="",

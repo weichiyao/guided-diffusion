@@ -6,9 +6,6 @@ from .respace import SpacedDiffusion, space_timesteps
 from .unet import SuperResModel, UNetModel, EncoderUNetModel
 from .resnet import get_model
 
-NUM_CLASSES = 1000
-
-
 def diffusion_defaults():
     """
     Defaults for image and classifier training.
@@ -38,6 +35,7 @@ def classifier_defaults():
         classifier_use_scale_shift_norm=True,  # False
         classifier_resblock_updown=True,  # False
         classifier_pool="attention",
+        num_classes=1000,
     )
 
 def classifier_basic_defaults():
@@ -65,6 +63,7 @@ def model_and_diffusion_defaults():
         attention_resolutions="16,8",
         channel_mult="",
         dropout=0.0,
+        num_classes=1000,
         class_cond=False,
         use_checkpoint=False,
         use_scale_shift_norm=True,
@@ -85,6 +84,7 @@ def classifier_and_diffusion_defaults():
 
 def create_model_and_diffusion(
     image_size,
+    num_classes,
     class_cond,
     learn_sigma,
     num_channels,
@@ -114,6 +114,7 @@ def create_model_and_diffusion(
         num_res_blocks, 
         channel_mult=channel_mult,
         learn_sigma=learn_sigma,
+        num_classes=num_classes,
         class_cond=class_cond,
         use_checkpoint=use_checkpoint,
         attention_resolutions=attention_resolutions,
@@ -145,6 +146,7 @@ def create_model(
     num_res_blocks,
     channel_mult="",
     learn_sigma=False,
+    num_classes=1000,
     class_cond=False,
     use_checkpoint=False,
     attention_resolutions="16",
@@ -189,7 +191,7 @@ def create_model(
         attention_resolutions=tuple(attention_ds),
         dropout=dropout,
         channel_mult=channel_mult,
-        num_classes=(NUM_CLASSES if class_cond else None),
+        num_classes=(num_classes if class_cond else None),
         use_checkpoint=use_checkpoint,
         use_fp16=use_fp16,
         num_heads=num_heads,
@@ -210,6 +212,7 @@ def create_classifier_and_diffusion(
     classifier_use_scale_shift_norm,
     classifier_resblock_updown,
     classifier_pool,
+    num_classes,
     learn_sigma,
     diffusion_steps,
     noise_schedule,
@@ -228,6 +231,7 @@ def create_classifier_and_diffusion(
         classifier_use_scale_shift_norm,
         classifier_resblock_updown,
         classifier_pool,
+        num_classes,
     )
     diffusion = create_gaussian_diffusion(
         steps=diffusion_steps,
@@ -259,6 +263,7 @@ def create_classifier(
     classifier_use_scale_shift_norm,
     classifier_resblock_updown,
     classifier_pool,
+    num_classes,
 ):
     if image_size == 512:
         channel_mult = (0.5, 1, 1, 2, 2, 4, 4)
@@ -284,7 +289,7 @@ def create_classifier(
         image_size=image_size,
         in_channels=3,
         model_channels=classifier_width,
-        out_channels=1000,
+        out_channels=num_classes,
         num_res_blocks=classifier_depth,
         attention_resolutions=tuple(attention_ds),
         channel_mult=channel_mult,

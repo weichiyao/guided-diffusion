@@ -69,6 +69,7 @@ def create_argparser():
     defaults = dict(
         dataset="ImageNet",
         data_dir="",
+        num_classes=1000,
         ndata=None,
         shift=False,
         targets_to_shift=[1,2,7],
