@@ -100,7 +100,9 @@ def load_data(
 
         if ndata is None:
             ndata = len(pytdataset)
-      
+        
+        ndata = int(ndata)
+
         indices_saved_filename = '{}_n{}_shift{}_target{}_prop{}_seed{}.npy'.format(
             dataset,
             ndata, 
