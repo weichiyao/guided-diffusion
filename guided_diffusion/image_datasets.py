@@ -88,7 +88,11 @@ def load_data(
         elif dataset == "MNIST":
             transform_action = []
             if random_crop:
-                transform_action.append(transforms.RandomCrop(28, padding=4))
+                transform_action.append( 
+                    transforms.RandomResizedCrop(
+                        28, scale=(0.8, 1.0), ratio=(0.8, 1.2)
+                    )
+                )
             if random_flip:
                 transform_action.append(transforms.RandomHorizontalFlip())
             transform_action.append(transforms.ToTensor())
