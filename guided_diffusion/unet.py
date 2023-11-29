@@ -98,16 +98,28 @@ class Upsample(nn.Module):
             self.conv = conv_nd(dims, self.channels, self.out_channels, 3, padding=1)
 
     def forward(self, x):
+        # assert x.shape[1] == self.channels
+        # if self.dims == 3:
+        #     x = F.interpolate(
+        #         x, (x.shape[2], x.shape[3] * 2, x.shape[4] * 2), mode="nearest"
+        #     )
+        # else:
+        #     x = F.interpolate(x, scale_factor=2, mode="nearest")
+        # if self.use_conv:
+        #     x = self.conv(x)
+        # return x
         assert x.shape[1] == self.channels
         if self.dims == 3:
-            x = F.interpolate(
+            out = F.interpolate(
                 x, (x.shape[2], x.shape[3] * 2, x.shape[4] * 2), mode="nearest"
             )
         else:
-            x = F.interpolate(x, scale_factor=2, mode="nearest")
+            out = F.interpolate(x, scale_factor=2, mode="nearest")
+        if x.shape[-1] == x.shape[-2] == 3: # a hack to address with 28x28 resolution
+            out = F.pad(out, (1, 0, 1, 0))
         if self.use_conv:
-            x = self.conv(x)
-        return x
+            out = self.conv(out)
+        return out
 
 
 class Downsample(nn.Module):
@@ -497,6 +509,7 @@ class UNetModel(nn.Module):
                         use_scale_shift_norm=use_scale_shift_norm,
                     )
                 ]
+                
                 ch = int(mult * model_channels)
                 if ds in attention_resolutions:
                     layers.append(
@@ -511,6 +524,7 @@ class UNetModel(nn.Module):
                 self.input_blocks.append(TimestepEmbedSequential(*layers))
                 self._feature_size += ch
                 input_block_chans.append(ch)
+                
             if level != len(channel_mult) - 1:
                 out_ch = ch
                 self.input_blocks.append(
@@ -608,7 +622,7 @@ class UNetModel(nn.Module):
                     ds //= 2
                 self.output_blocks.append(TimestepEmbedSequential(*layers))
                 self._feature_size += ch
-
+               
         self.out = nn.Sequential(
             normalization(ch),
             nn.SiLU(),
@@ -646,15 +660,17 @@ class UNetModel(nn.Module):
 
         hs = []
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
-
+        
         if self.num_classes is not None:
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
-
+        
         h = x.type(self.dtype)
+        
         for module in self.input_blocks:
             h = module(h, emb)
             hs.append(h)
+            
         h = self.middle_block(h, emb)
         for module in self.output_blocks:
             h = th.cat([h, hs.pop()], dim=1)
