@@ -227,7 +227,6 @@ def create_classifier_and_diffusion(
     rescale_learned_sigmas,
     rgb=True
 ):
-    image_channels = 3 if rgb else 1
     classifier = create_classifier(
         image_size,
         classifier_use_fp16,
@@ -238,7 +237,7 @@ def create_classifier_and_diffusion(
         classifier_resblock_updown,
         classifier_pool,
         num_classes,
-        image_channels
+        rgb
     )
     diffusion = create_gaussian_diffusion(
         steps=diffusion_steps,
@@ -271,7 +270,7 @@ def create_classifier(
     classifier_resblock_updown,
     classifier_pool,
     num_classes,
-    image_channels
+    rgb
 ):
     if image_size == 512:
         channel_mult = (0.5, 1, 1, 2, 2, 4, 4)
@@ -292,7 +291,8 @@ def create_classifier(
     attention_ds = []
     for res in classifier_attention_resolutions.split(","):
         attention_ds.append(image_size // int(res))
-
+    
+    image_channels = 3 if rgb else 1
     return EncoderUNetModel(
         image_size=image_size,
         in_channels=image_channels,
