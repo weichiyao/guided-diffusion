@@ -24,7 +24,7 @@ def load_data(
     class_cond=False,
     deterministic=False,
     random_crop=False,
-    random_flip=True, 
+    random_flip=False, 
     ndata=None,
     shift=False,
     targets_to_shift=[1,2,7],

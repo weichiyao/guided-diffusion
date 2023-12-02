@@ -74,17 +74,20 @@ def main():
         sample_fn = (
             diffusion.p_sample_loop if not args.use_ddim else diffusion.ddim_sample_loop
         )
+        image_channels = 3 if args.rgb else 1
         sample = sample_fn(
             model_fn,
-            (args.batch_size, 3, args.image_size, args.image_size),
+            (args.batch_size, image_channels, args.image_size, args.image_size),
             clip_denoised=args.clip_denoised,
             model_kwargs=model_kwargs,
             cond_fn=cond_fn,
             device=dist_util.dev(),
         )
-        sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
-        sample = sample.permute(0, 2, 3, 1)
-        sample = sample.contiguous()
+        print(sample.shape)
+        if args.dataset not in ['CIFAR10', 'MNIST']:
+            sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
+            sample = sample.permute(0, 2, 3, 1)
+            sample = sample.contiguous()
 
         gathered_samples = [th.zeros_like(sample) for _ in range(dist.get_world_size())]
         dist.all_gather(gathered_samples, sample)  # gather not supported with NCCL
@@ -112,6 +115,7 @@ def main():
 
 def create_argparser():
     defaults = dict(
+        dataset='CIFAR10',
         clip_denoised=True,
         num_classes=10,
         num_samples=10000,
