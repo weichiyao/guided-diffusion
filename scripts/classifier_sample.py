@@ -83,7 +83,7 @@ def main():
             cond_fn=cond_fn,
             device=dist_util.dev(),
         )
-        print(sample.shape)
+        # print(sample.shape)
         if args.dataset not in ['CIFAR10', 'MNIST']:
             sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
             sample = sample.permute(0, 2, 3, 1)
@@ -124,7 +124,8 @@ def create_argparser():
         model_path="",
         classifier_path="",
         classifier_scale=1.0,
-        save_logdir=None
+        save_logdir=None,
+        rgb=True
     )
     defaults.update(model_and_diffusion_defaults())
     defaults.update(classifier_defaults())
