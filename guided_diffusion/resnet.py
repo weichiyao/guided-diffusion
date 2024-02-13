@@ -80,7 +80,6 @@ class Bottleneck(nn.Module):
         return out
 
 
-
 class BottleneckChen2020AdversarialNet(nn.Module):
     expansion = 4
 
