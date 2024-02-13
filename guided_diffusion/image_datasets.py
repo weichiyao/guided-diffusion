@@ -28,7 +28,7 @@ def load_data(
     ndata=None,
     shift=False,
     targets_to_shift=[1,2,7],
-    shrink_to_proportion=0.01,
+    shrink_to_proportion=0.002,
     seed=101
 ):
     """

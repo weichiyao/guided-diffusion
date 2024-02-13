@@ -224,7 +224,7 @@ def create_argparser():
         ndata=None,
         shift=False,
         targets_to_shift=[1,2,7],
-        shrink_to_proportion=0.01,
+        shrink_to_proportion=0.002,
         seed=101,
         noised=True,
         iterations=150000,
